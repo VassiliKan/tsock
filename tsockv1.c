@@ -23,12 +23,11 @@ données du réseau */
 void construire_message(char *message, char motif, int lg);
 void afficher_message(char *message, int lg);
 int creer_socket_local();
-struct sockaddr_in* creer_adr_distante_puits();
 void creer_adr_local_puits();
 int envoi_msg(int taille_message);
 
-int nb_message = -1; /* Nb de messages à envoyer ou à recevoir, par défaut : 10 en émission, infini en réception */
-int source = -1 ; /* 0=puits, 1=source */
+int nb_message = 10; /* Nb de messages à envoyer ou à recevoir, par défaut : 10 en émission, infini en réception */
+int source =-1 ; /* 0=puits, 1=source */
 int taille_message = 30;
 int typeProtocole;
 int port;
@@ -88,7 +87,6 @@ void main (int argc, char **argv)
 			printf("nb de tampons à recevoir : %d\n", nb_message);
 	} else {
 		if (source == 1) {
-			nb_message = 10 ;
 			printf("nb de tampons à envoyer = 10 par défaut\n");
 		} else {
 	    	printf("nb de tampons à envoyer = infini\n");
@@ -129,16 +127,19 @@ int envoi_msg(int taille_message){
     memcpy((char*)&(adr_distant.sin_addr.s_addr), hp->h_addr, hp->h_length);
    
     // sendto
-    construire_message(message,'a', taille_message);
-    int err = sendto(sock, message, taille_message, 0, (struct sockaddr*)&adr_distant,sizeof(adr_distant));
-    if(err < 0){
-        perror("Erreur sendto");
-        exit(1);
+    int i;
+    printf("taille_msg_emis=%d, port=%d, nb_msg=%d, protocol=UDP, dest=%s\n", taille_message, port, nb_message, nom_station);
+    for(i=0; i<nb_message; i++){
+        construire_message(message, (char)(i%26)+97, taille_message);
+        int err = sendto(sock, message, taille_message, 0, (struct sockaddr*)&adr_distant,sizeof(adr_distant));
+        if(err < 0){
+            perror("Erreur sendto");
+            exit(1);
+        }
+        //char payload[6];
+       // memset((char*)payload, '-', );
+        printf("Envoi n°%d (%d) [%s]\n",i+1, taille_message, message);
     }
-    printf("Message de %d octets envoyé sur le port %d\n", err, port);
-    printf("Options : %d msg, %d octets par msg\n", nb_message, taille_message);
-    printf("ProtocoSOCK_DGRAMle : %d\n", source);  // spécifier protocole
-    printf("Machine puits : %s\n", nom_station);
 }
 
 int creer_socket_local(){
