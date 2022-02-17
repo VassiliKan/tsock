@@ -23,7 +23,6 @@ données du réseau */
 void construire_message(char *message, char motif, int lg);
 void afficher_message(char *message, int lg);
 int creer_socket_local();
-void creer_adr_local_puits();
 int envoi_msg(int taille_message);
 
 int nb_message = 10; /* Nb de messages à envoyer ou à recevoir, par défaut : 10 en émission, infini en réception */
@@ -109,10 +108,7 @@ int envoi_msg(int taille_message){
 
     //1. Création socket
     int sock = creer_socket_local();
-    if(sock<0){
-        perror("Erreur socktet");
-        exit(1);
-    }
+
     // Adress distante
     struct hostent *hp;
     struct sockaddr_in adr_distant;
@@ -140,6 +136,36 @@ int envoi_msg(int taille_message){
        // memset((char*)payload, '-', );
         printf("Envoi n°%d (%d) [%s]\n",i+1, taille_message, message);
     }
+    return 0;
+}
+
+
+int recevoir_msg(){
+    //1. Création socket
+    int sock = creer_socket_local();
+
+    //2. Construction adresse du socket
+    struct sockaddr_in adr_local;
+    int lg_adr_local = sizeof(adr_local);
+    memset((char*)&adr_local, 0, sizeof(adr_local)) ; 
+    adr_local.sin_family = AF_INET ;
+    adr_local.sin_port = port;
+    adr_local.sin_addr.s_addr = INADDR_ANY ;
+
+    //3. Bind de l'adresse
+    int err = bind (sock, (struct sockaddr *)&adr_local, lg_adr_local); 
+    if (err == -1){ 
+        printf("échec du bind\n") ;
+        exit(1); 
+    }
+
+    //4. Reception des messages
+    while(1){
+        char buffer[taille_message+5];
+        char source[256];
+        int err = recvfrom(sock, buffer,taille_message, 0, source, );
+    }
+    return 0;
 }
 
 int creer_socket_local(){
@@ -155,16 +181,6 @@ int creer_socket_local(){
     }
     return sock;
 }
-
-// PUITS
-void creer_adr_local_puits(){
-    struct sockaddr_in adr_local;
-    memset((char*)&adr_local, 0, sizeof(adr_local));
-    adr_local.sin_family = AF_INET;
-    adr_local.sin_port = 9999;
-    adr_local.sin_addr.s_addr = INADDR_ANY;
-}
-
 
 void construire_message(char *message, char motif, int lg){
     int i;
