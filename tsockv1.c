@@ -24,6 +24,7 @@ void construire_message(char *message, char motif, int lg);
 void afficher_message(char *message, int lg);
 int creer_socket_local();
 int envoi_msg(int taille_message);
+int recevoir_msg();
 
 int nb_message = 10; /* Nb de messages à envoyer ou à recevoir, par défaut : 10 en émission, infini en réception */
 int source =-1 ; /* 0=puits, 1=source */
@@ -96,9 +97,10 @@ void main (int argc, char **argv)
         int err;
         err = envoi_msg(taille_message);
     }
-	else{
+	else {
 		printf("on est dans le puits\n");
-
+        int err;
+        err = recevoir_msg();
     }
 
 } 
@@ -149,7 +151,7 @@ int recevoir_msg(){
     int lg_adr_local = sizeof(adr_local);
     memset((char*)&adr_local, 0, sizeof(adr_local)) ; 
     adr_local.sin_family = AF_INET ;
-    adr_local.sin_port = port;
+    adr_local.sin_port = htons(port);
     adr_local.sin_addr.s_addr = INADDR_ANY ;
 
     //3. Bind de l'adresse
@@ -160,10 +162,15 @@ int recevoir_msg(){
     }
 
     //4. Reception des messages
+    printf("taille_msg_lu=%d, port=%d, nb_msg=%d, protocol=UDP\n", taille_message, port, nb_message);
+    int nb_msg_recus = 0;
     while(1){
-        char buffer[taille_message+5];
-        char source[256];
-        int err = recvfrom(sock, buffer,taille_message, 0, source, );
+        char buffer[taille_message];
+        struct sockaddr padr_em;
+        int plg_adr_em;
+        int err = recvfrom(sock, &buffer, taille_message, 0, &padr_em, &plg_adr_em);
+        nb_msg_recus ++;
+        printf("Reception n°%d (%d) [%d%s]\n",nb_msg_recus, taille_message, nb_msg_recus, buffer);
     }
     return 0;
 }
