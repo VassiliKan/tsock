@@ -19,8 +19,6 @@ données du réseau */
 #include <errno.h>
 
 #define PROTOCOLE 0
-#define PORT 9999
-#define NOM_STATION "INSA-20720"
 
 void construire_message(char *message, char motif, int lg);
 void afficher_message(char *message, int lg);
@@ -33,6 +31,8 @@ int nb_message = -1; /* Nb de messages à envoyer ou à recevoir, par défaut : 
 int source = -1 ; /* 0=puits, 1=source */
 int taille_message = 30;
 int typeProtocole;
+int port;
+char nom_station[25];
 
 void main (int argc, char **argv)
 {
@@ -40,6 +40,9 @@ void main (int argc, char **argv)
 	extern char *optarg;
 	extern int optind;
 	
+    port = atoi(argv[argc-1]);
+    strcpy(nom_station, argv[argc-2]);
+
 	while ((c = getopt(argc, argv, "pl:n:su")) != -1) {
 		switch (c) {
 		case 'p':
@@ -117,8 +120,8 @@ int envoi_msg(int taille_message){
     struct sockaddr_in adr_distant;
     memset((char*)&adr_distant, 0, sizeof(adr_distant));
     adr_distant.sin_family = AF_INET;
-    adr_distant.sin_port = htons(PORT);        // port distant
-    hp = gethostbyname(NOM_STATION);             // nom station
+    adr_distant.sin_port = htons(port);        // port distant
+    hp = gethostbyname(nom_station);             // nom station
     if(hp == NULL){
         perror("erreur gethostbyname\n");
         exit(1);
@@ -132,10 +135,10 @@ int envoi_msg(int taille_message){
         perror("Erreur sendto");
         exit(1);
     }
-    printf("Message de %d octets envoyé sur le port %d\n", err, PORT);
+    printf("Message de %d octets envoyé sur le port %d\n", err, port);
     printf("Options : %d msg, %d octets par msg\n", nb_message, taille_message);
     printf("ProtocoSOCK_DGRAMle : %d\n", source);  // spécifier protocole
-    printf("Machine puits : %s\n", NOM_STATION);
+    printf("Machine puits : %s\n", nom_station);
 }
 
 int creer_socket_local(){
