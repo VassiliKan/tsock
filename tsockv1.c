@@ -33,13 +33,14 @@ int nb_message = -1; /* Nb de messages à envoyer ou à recevoir, par défaut : 
 int source = -1 ; /* 0=puits, 1=source */
 int taille_message = 30;
 int typeProtocole;
+
 void main (int argc, char **argv)
 {
 	int c;
 	extern char *optarg;
 	extern int optind;
 	
-	while ((c = getopt(argc, argv, "pn:su")) != -1) {
+	while ((c = getopt(argc, argv, "pl:n:su")) != -1) {
 		switch (c) {
 		case 'p':
 			if (source == 1) {
@@ -62,6 +63,9 @@ void main (int argc, char **argv)
         case 'u':
             typeProtocole = 0;
             break;
+        case 'l':
+            taille_message = atoi(optarg);
+            break;
 		default:
 			printf("usage: cmd [-p|-s][-n ##]\n");
             typeProtocole = 1;
@@ -73,11 +77,6 @@ void main (int argc, char **argv)
 		printf("usage: cmd [-p|-s][-n ##]\n");
 		exit(1) ;
 	}
-
-	if (source == 1)
-		printf("on est dans le source\n");
-	else
-		printf("on est dans le puits\n");
 
 	if (nb_message != -1) {
 		if (source == 1)
@@ -92,26 +91,47 @@ void main (int argc, char **argv)
 	    	printf("nb de tampons à envoyer = infini\n");
         }
 	}
-    int err;
-    err = envoi_msg(taille_message);
+	if (source == 1){
+		printf("on est dans le source\n");
+        int err;
+        err = envoi_msg(taille_message);
+    }
+	else{
+		printf("on est dans le puits\n");
+
+    }
+
 } 
 
 int envoi_msg(int taille_message){
-    int err;
-    int sock;
-    char *msg = malloc(taille_message);
-    struct sockaddr_in *padr_dest;
-    int lg_adr_dest;
-    sock = creer_socket_local();
-    construire_message(msg, 'A', taille_message);
-    padr_dest = creer_adr_distante_puits();
-    lg_adr_dest = sizeof(padr_dest);
-    printf("%lu\n", padr_dest->sin_addr.s_addr);
-    err = sendto(sock, msg, taille_message, 0, (struct sockaddr*)padr_dest, lg_adr_dest);
-    if(err == -1){
-        printf("Erreur envoi du message\n");
+    char *message = (char *)malloc(taille_message*sizeof(char));
+
+    //1. Création socket
+    int sock = creer_socket_local();
+    if(sock<0){
+        perror("Erreur socktet");
         exit(1);
-    } 
+    }
+    // Adress distante
+    struct hostent *hp;
+    struct sockaddr_in adr_distant;
+    memset((char*)&adr_distant, 0, sizeof(adr_distant));
+    adr_distant.sin_family = AF_INET;
+    adr_distant.sin_port = htons(PORT);        // port distant
+    hp = gethostbyname(NOM_STATION);             // nom station
+    if(hp == NULL){
+        perror("erreur gethostbyname\n");
+        exit(1);
+    }
+    memcpy((char*)&(adr_distant.sin_addr.s_addr), hp->h_addr, hp->h_length);
+   
+    // sendto
+    construire_message(message,'a', taille_message);
+    int err = sendto(sock, message, taille_message, 0, (struct sockaddr*)&adr_distant,sizeof(adr_distant));
+    if(err < 0){
+        perror("Erreur sendto");
+        exit(1);
+    }
     printf("Message de %d octets envoyé sur le port %d\n", err, PORT);
     printf("Options : %d msg, %d octets par msg\n", nb_message, taille_message);
     printf("ProtocoSOCK_DGRAMle : %d\n", source);  // spécifier protocole
@@ -132,24 +152,6 @@ int creer_socket_local(){
     return sock;
 }
 
-// SOURCE
-struct sockaddr_in* creer_adr_distante_puits(){
-    struct hostent *hp;
-    struct sockaddr_in *adr_distant;
-    adr_distant = (struct sockaddr_in*)malloc(sizeof(struct sockaddr_in));
-    memset((char*)adr_distant, 0, sizeof(*adr_distant));
-    adr_distant->sin_family = AF_INET;
-    adr_distant->sin_port = htons(PORT);        // port distant
-    hp = gethostbyname(NOM_STATION);             // nom station
-    if(hp == NULL){
-        printf("erreur gethostbyname\n");
-        exit(1);
-    }
-    memcpy((char*)&(adr_distant->sin_addr.s_addr), hp->h_addr, hp->h_length);
-    return adr_distant;
-}
-
-
 // PUITS
 void creer_adr_local_puits(){
     struct sockaddr_in adr_local;
@@ -159,9 +161,6 @@ void creer_adr_local_puits(){
     adr_local.sin_addr.s_addr = INADDR_ANY;
 }
 
-/*void association_adr_dest(){
-
-}*/
 
 void construire_message(char *message, char motif, int lg){
     int i;
@@ -175,6 +174,6 @@ void afficher_message(char *message, int lg) {
     printf("message construit : ");
     for (i=0;i<lg;i++){
         printf("%c", message[i]);
-        printf("\n");
-    }
+    }       
+    printf("\n");
 }
