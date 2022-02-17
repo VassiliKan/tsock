@@ -20,7 +20,7 @@ données du réseau */
 
 #define PROTOCOLE 0
 #define PORT 9999
-#define NOM_STATION "INSA-20149"
+#define NOM_STATION "INSA-20720"
 
 void construire_message(char *message, char motif, int lg);
 void afficher_message(char *message, int lg);
@@ -139,7 +139,7 @@ struct sockaddr_in* creer_adr_distante_puits(){
     adr_distant = (struct sockaddr_in*)malloc(sizeof(struct sockaddr_in));
     memset((char*)adr_distant, 0, sizeof(*adr_distant));
     adr_distant->sin_family = AF_INET;
-    adr_distant->sin_port = PORT;        // port distant
+    adr_distant->sin_port = htons(PORT);        // port distant
     hp = gethostbyname(NOM_STATION);             // nom station
     if(hp == NULL){
         printf("erreur gethostbyname\n");
