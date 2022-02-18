@@ -23,13 +23,13 @@ données du réseau */
 void construire_message(char *message, char motif, int lg);
 void afficher_message(char *message, int lg);
 int creer_socket_local();
-int envoi_msg(int taille_message);
-int recevoir_msg();
+int envoi_msg_TCP(int taille_message);
+int recevoir_msg_TCP();
 
 int nb_message = 10; /* Nb de messages à envoyer ou à recevoir, par défaut : 10 en émission, infini en réception */
 int source =-1 ; /* 0=puits, 1=source */
 int taille_message = 30;
-int typeProtocole;
+int typeProtocole = 1;
 int port;
 char nom_station[25];
 
@@ -51,7 +51,6 @@ void main (int argc, char **argv)
 			}
 			source = 0;
 			break;
-
 		case 's':
 			if (source == 0) {
 				printf("usage: cmd [-p|-s][-n ##]\n");
@@ -70,7 +69,6 @@ void main (int argc, char **argv)
             break;
 		default:
 			printf("usage: cmd [-p|-s][-n ##]\n");
-            typeProtocole = 1;
 			break;
 		}
 	}
@@ -164,7 +162,7 @@ int recevoir_msg(){
     //3. Bind de l'adresse
     int err = bind (sock, (struct sockaddr *)&adr_local, lg_adr_local); 
     if (err == -1){ 
-        printf("échec du bind\n") ;
+        printf("Echec du bind\n") ;
         exit(1); 
     }
 
@@ -184,21 +182,19 @@ int recevoir_msg(){
     }
 
     //4. Reception des messages
-    printf("taille_msg_lu=%d, port=%d, nb_msg=%d, protocol=UDP\n", taille_message, port, nb_message);
-    int nb_msg_recus = 0;
+    printf("taille_msg_lu=%d, port=%d, nb_msg=%d, protocol=TCP\n", taille_message, port, nb_message);
     int i;
-    int max=10;
+    int max=15;
     int lg_max=30;
     int taille_msg_recu;
     char buffer[taille_message];
     for (i=0 ; i < max ; i ++) {
         if ((taille_msg_recu = read(sock_bis, buffer, lg_max)) < 0){
-            printf("échec du read\n");
+            printf("Echec read\n");
             exit(1) ;
         }
-        afficher_message(buffer, taille_msg_recu) ;
+        printf("Reception n°%d (%d) [%d%s]\n", i+1, taille_message, i+1, buffer);
     }
-        printf("Reception n°%d (%d) [%d%s]\n",nb_msg_recus, taille_message, nb_msg_recus, buffer);
     return 0;
 }
 
