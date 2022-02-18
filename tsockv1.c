@@ -23,9 +23,9 @@ données du réseau */
 void construire_message(char *message, char motif, int lg);
 void afficher_message(char *message, int lg);
 int creer_socket_local();
-int envoi_msg_UDP(int taille_message);
+int envoi_msg_UDP();
 int recevoir_msg_UDP();
-int envoi_msg_TCP(int taille_message);
+int envoi_msg_TCP();
 int recevoir_msg_TCP();
 
 int nb_message = 10; /* Nb de messages à envoyer ou à recevoir, par défaut : 10 en émission, infini en réception */
@@ -100,9 +100,9 @@ void main (int argc, char **argv)
 	if (source == 1){
 		printf("on est dans la source\n");
         if (typeProtocole == 0){
-            err = envoi_msg_UDP(taille_message);
+            err = envoi_msg_UDP();
         } else {
-            err = envoi_msg_TCP(taille_message);
+            err = envoi_msg_TCP();
         }
     }
 	else {
@@ -116,7 +116,7 @@ void main (int argc, char **argv)
 
 } 
 
-int envoi_msg_UDP(int taille_message){
+int envoi_msg_UDP(){
     char *message = (char *)malloc(taille_message*sizeof(char));
 
     //1. Création socket
@@ -149,6 +149,7 @@ int envoi_msg_UDP(int taille_message){
        // memset((char*)payload, '-', );
         printf("Envoi n°%d (%d) [%s]\n",i+1, taille_message, message);
     }
+    close(sock);
     return 0;
 }
 
@@ -168,7 +169,7 @@ int recevoir_msg_UDP(){
     //3. Bind de l'adresse
     int err = bind (sock, (struct sockaddr *)&adr_local, lg_adr_local); 
     if (err == -1){ 
-        printf("échec du bind\n") ;
+        printf("Echec du bind\n") ;
         exit(1); 
     }
 
@@ -183,10 +184,11 @@ int recevoir_msg_UDP(){
         nb_msg_recus ++;
         printf("Reception n°%d (%d) [%d%s]\n",nb_msg_recus, taille_message, nb_msg_recus, buffer);
     }
+    close(sock);
     return 0;
 }
 
-int envoi_msg_TCP(int taille_message){
+int envoi_msg_TCP(){
     char *message = (char *)malloc(taille_message*sizeof(char));
 
     //1. Création socket
@@ -226,6 +228,7 @@ int envoi_msg_TCP(int taille_message){
        // memset((char*)payload, '-', );
         printf("Envoi n°%d (%d) [%s]\n",i+1, taille_message, message);
     }
+    close(sock);
     return 0;
 }
 
@@ -278,6 +281,7 @@ int recevoir_msg_TCP(){
         }
         printf("Reception n°%d (%d) [%d%s]\n", i+1, taille_message, i+1, buffer);
     }
+    close(sock);
     return 0;
 }
 
