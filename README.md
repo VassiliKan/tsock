@@ -1,8 +1,6 @@
 # Implementation tsock (AIPS)
 
-Sacha CAULI
-
-Justin FORSANS
+Sacha CAULI & Justin FORSANS (Groupe E)
 
 
 Permet d'échanger des messages entre un puits et une source via les protocoles TCP ou UDP.
