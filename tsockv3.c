@@ -41,7 +41,7 @@ Message émis formaté, message reçus juste print
 
 void construire_message(char *message, char motif, int lg);
 void afficher_message(char *message, int lg);
-char* formatAffichage(int a);
+char* formatMessage(int a);
 int countChiffres(int a);
 int creer_socket_local();
 int envoi_msg_UDP();
@@ -137,8 +137,14 @@ void main (int argc, char **argv)
 
 } 
 
+                    ///////////////
+///////////////////////   UDP   ///////////////////////
+                    ///////////////
+
+
 int envoi_msg_UDP(){
-    char *message = (char *)malloc(taille_message*sizeof(char));
+    char *chaine = (char *)malloc(taille_message*sizeof(char)); // contient la chaine composé d'un caractere fixe
+    char *message = (char *)malloc((5+taille_message)*sizeof(char)); // contient la chaine ci-dessus prefixee du format '---nb'
 
     //1. Création socket
     int sock = creer_socket_local();
@@ -158,19 +164,17 @@ int envoi_msg_UDP(){
    
     // Envoi des messages au puits
     int i;    
-    char *formatStr;
     printf("SOURCE : taille_msg_emis=%d, port=%d, nb_msg=%d, protocol=%s, dest=%s\n", taille_message, port, nb_message, nomProtocole, nom_station);
     for(i=0; i<nb_message; i++){
-        formatStr = malloc(5*sizeof(char));
-        construire_message(message, (char)(i%26)+97, taille_message);
+        construire_message(chaine, (char)(i%26)+97, taille_message);
+        strcpy(message, formatMessage(i+1));
+        strcat(message, chaine);
         int err = sendto(sock, message, taille_message, 0, (struct sockaddr*)&adr_distant,sizeof(adr_distant));
         if(err < 0){
             perror("SOURCE : Erreur sendto");
             exit(1);
         }
-        strcpy(formatStr, formatAffichage(i+1));
-        printf("SOURCE : Envoi n°%d (%d) [%s%d%s]\n", i+1, taille_message, formatStr, i+1, message);
-        free(formatStr);
+        printf("SOURCE : Envoi n°%d (%d) [%s]\n", i+1, taille_message, message);
     }
     close(sock);
     return 0;
@@ -200,21 +204,26 @@ int recevoir_msg_UDP(){
     printf("PUITS : taille_msg_lu=%d, port=%d, nb_msg=%d, protocol=%s\n", taille_message, port, nb_message, nomProtocole);
     int nb_msg_recus = 0;    
     int plg_adr_em;
-    char formatStr[5];
     char buffer[taille_message];
     struct sockaddr padr_em;
     while(1){
         err = recvfrom(sock, &buffer, taille_message, 0, &padr_em, &plg_adr_em);
         nb_msg_recus++;
-        strcpy(formatStr, formatAffichage(nb_msg_recus));
-        printf("PUITS : Reception n°%d (%d) [%s%d%s]\n",nb_msg_recus, taille_message, formatStr, nb_msg_recus, buffer);
+        printf("PUITS : Reception n°%d (%d) [%s]\n",nb_msg_recus, taille_message, buffer);
     }
     close(sock);
     return 0;
 }
 
+
+                    ///////////////
+///////////////////////   TCP   ///////////////////////
+                    ///////////////
+
+
 int envoi_msg_TCP(){
-    char *message = (char *)malloc(taille_message*sizeof(char));
+    char *chaine = (char *)malloc(taille_message*sizeof(char)); // contient la chaine composé d'un caractere fixe
+    char *message = (char *)malloc((5+taille_message)*sizeof(char)); // contient la chaine ci-dessus prefixee du format '---nb'
 
     //1. Création socket
     int sock = creer_socket_local();
@@ -225,7 +234,7 @@ int envoi_msg_TCP(){
     memset((char*)&adr_distant, 0, sizeof(adr_distant));
     adr_distant.sin_family = AF_INET;
     adr_distant.sin_port = htons(port);        // port distant
-    hp = gethostbyname(nom_station);             // nom station
+    hp = gethostbyname(nom_station);           // nom station
     if(hp == NULL){
         perror("SOURCE : Erreur gethostbyname()\n");
         exit(1);
@@ -241,17 +250,17 @@ int envoi_msg_TCP(){
 
     // Envoi des messages au puits
     int i;
-    char formatStr[5];
     printf("SOURCE : taille_msg_emis=%d, port=%d, nb_msg=%d, protocol=%s, dest=%s\n", taille_message, port, nb_message, nomProtocole, nom_station);
     for(i=0; i<nb_message; i++){
-        construire_message(message, (char)(i%26)+97, taille_message);
+        construire_message(chaine, (char)(i%26)+97, taille_message);
+        strcpy(message, formatMessage(i+1));
+        strcat(message, chaine);
         err = sendto(sock, message, taille_message, 0, (struct sockaddr*)&adr_distant,sizeof(adr_distant));
         if(err < 0){
             perror("SOURCE : Erreur sendto");
             exit(1);
         }
-        strcpy(formatStr, formatAffichage(i+1));
-        printf("SOURCE : Envoi n°%d (%d) [%s%d%s]\n", i+1, taille_message, formatStr, i+1, message);
+        printf("SOURCE : Envoi n°%d (%d) [%s]\n", i+1, taille_message, message);
     }
     close(sock);
     return 0;
@@ -296,7 +305,6 @@ int recevoir_msg_TCP(){
     printf("PUITS : taille_msg_lu=%d, port=%d, nb_msg=%d, protocol=%s\n", taille_message, port, nb_message, nomProtocole);
     int i;
     int lg_max=30;
-    char formatStr[5];
     int taille_msg_recu;
     char buffer[taille_message];
     for (i=0 ; i < nb_message; i ++) {
@@ -304,12 +312,17 @@ int recevoir_msg_TCP(){
             printf("PUITS : Echec read\n");
             exit(1) ;
         }
-        strcpy(formatStr, formatAffichage(i+1));
-        printf("PUITS : Reception n°%d (%d) [%s%d%s]\n", i+1, taille_message, formatStr, i+1, buffer);
+        printf("PUITS : Reception n°%d (%d) [%s]\n", i+1, taille_message, buffer);
     }
     close(sock);
     return 0;
 }
+
+
+                    //////////////////
+///////////////////////   SOCKET   ///////////////////////
+                    //////////////////
+
 
 int creer_socket_local(){
     int sock;
@@ -327,6 +340,12 @@ int creer_socket_local(){
     return sock;
 }
 
+
+                    ///////////////////
+///////////////////////   MESSAGE   ///////////////////////
+                    ///////////////////
+
+
 void construire_message(char *message, char motif, int lg){
     int i;
     for (i=0;i<lg;i++){
@@ -343,19 +362,18 @@ void afficher_message(char *message, int lg) {
     printf("\n");
 }
 
-char* formatAffichage(int a){
-	int n = countChiffres(a);
-	char *dest;
-	dest = malloc((5)*sizeof(char));
+// Construit le préfixe du message envoyé, composé de '-' et du numéro de l'envoi
+char* formatMessage(int a){
+    char nbStr[10];
+	sprintf(nbStr, "%d", a);
+	int n = strlen(nbStr);     // compte le nombre de chiffre composant le numéro du message envoyé
+	char *prefixe;
+	prefixe = malloc((5)*sizeof(char));
 	if (5-n != 0){
-		memset(dest, '-', (5-n)*sizeof(char));
-        memset(dest+(5-n), '\0', 1);
+		memset(prefixe, '-', (5-n)*sizeof(char));  // assigne à la chaine appelee prefixe le nombre de caractere '-' necessaire 
+        memset(prefixe+(5-n), '\0', 1);
 	}
-	return dest;
+    strcat(prefixe, nbStr); // concatene les '-' et le numero d'envoi (convertit sous forme de chaine)
+	return prefixe;
 }
 
-int countChiffres(int a){
-	char nbStr[10];
-	sprintf(nbStr, "%d", a);
-	return strlen(nbStr);
-}
