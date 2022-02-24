@@ -152,8 +152,8 @@ void main (int argc, char **argv)
 
 
 int envoi_msg_UDP(){
-    char *chaine = (char *)malloc(tailleMessage*sizeof(char)); // contient la chaine composé d'un caractere fixe
-    char *message = (char *)malloc((5+tailleMessage)*sizeof(char)); // contient la chaine ci-dessus prefixee du format '---nb'
+    char *chaine = (char *)malloc((tailleMessage-5)*sizeof(char)); // contient la chaine composé d'un caractere fixe
+    char *message = (char *)malloc(tailleMessage*sizeof(char)); // contient la chaine ci-dessus prefixee du format '---nb'
 
     //1. Création socket
     int sock = creer_socket_local();
@@ -175,7 +175,7 @@ int envoi_msg_UDP(){
     int i;    
     printf("SOURCE : taille_msg_emis=%d, port=%d, nb_msg=%d, protocol=%s, dest=%s\n", tailleMessage, port, nbMessage, nomProtocole, nomStation);
     for(i=0; i<nbMessage; i++){
-        construire_message(chaine, (char)(i%26)+97, tailleMessage);
+        construire_message(chaine, (char)(i%26)+97, tailleMessage-5);
         strcpy(message, format_message(i+1));
         strcat(message, chaine);
         int err = sendto(sock, message, tailleMessage, 0, (struct sockaddr*)&adr_distant,sizeof(adr_distant));
@@ -217,19 +217,20 @@ int recevoir_msg_UDP(){
     }
 
     //4. Reception des messages
-    printf("PUITS : taille_msg_lu=%d, port=%d, nb_msg=%d, protocol=%s\n", tailleMessage, port, nbMessage, nomProtocole);
     int nb_msg_recus = 0;    
     int plg_adr_em;
     char buffer[tailleMessage];
     struct sockaddr padr_em;
     // Reception infinie lorsque le nombre de msg n'est pas precise
     if (receptionInfinie) {
+        printf("PUITS : taille_msg_lu=%d, port=%d, nb_msg=infini, protocol=%s\n", tailleMessage, port, nomProtocole);
         while(1){
             err = recvfrom(sock, &buffer, tailleMessage, 0, &padr_em, &plg_adr_em);
             nb_msg_recus++;
             printf("PUITS : Reception n°%d (%d) [%s]\n",nb_msg_recus, tailleMessage, buffer);
         }
     } else {  // Reception finie dans le cas contraire
+        printf("PUITS : taille_msg_lu=%d, port=%d, nb_msg=%d, protocol=%s\n", tailleMessage, port, nbMessage, nomProtocole);
         int i;
         for(i=0; i<nbMessage; i++){
             err = recvfrom(sock, &buffer, tailleMessage, 0, &padr_em, &plg_adr_em);
