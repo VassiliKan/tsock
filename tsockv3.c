@@ -24,6 +24,21 @@ données du réseau */
 #define PROTOCOLE 0
 
 
+
+/* 
+
+
+
+WRITE
+
+taille message
+
+
+
+*/
+
+
+
 void construire_message(char *message, char motif, int lg);
 void afficher_message(char *message, int lg);
 char* format_message(int a);
@@ -72,6 +87,10 @@ void main (int argc, char **argv)
 		case 'n':
 			nbMessage = atoi(optarg);
             receptionInfinie = 0;
+            if (nbMessage < 1){
+                printf("Erreur, le nombre de messages doit etre >= 1");
+                exit(1);
+            }
 			break;
         case 'u':
             typeProtocole = 0;
@@ -79,6 +98,10 @@ void main (int argc, char **argv)
             break;
         case 'l':
             tailleMessage = atoi(optarg);
+            if (tailleMessage < 6){
+                printf("Erreur, la taille des messages doit etre >= 6");
+                exit(1);
+            }
             break;
 		default:
 			printf("usage: cmd [-p|-s][-n ##]\n");
@@ -135,7 +158,7 @@ int envoi_msg_UDP(){
     //1. Création socket
     int sock = creer_socket_local();
 
-    // Création de l'adresse distante
+    //2 Création de l'adresse distante
     struct hostent *hp;
     struct sockaddr_in adr_distant;
     memset((char*)&adr_distant, 0, sizeof(adr_distant));
@@ -148,7 +171,7 @@ int envoi_msg_UDP(){
     }
     memcpy((char*)&(adr_distant.sin_addr.s_addr), hp->h_addr, hp->h_length);
    
-    // Envoi des messages au puits
+    //3. Envoi des messages au puits
     int i;    
     printf("SOURCE : taille_msg_emis=%d, port=%d, nb_msg=%d, protocol=%s, dest=%s\n", tailleMessage, port, nbMessage, nomProtocole, nomStation);
     for(i=0; i<nbMessage; i++){
@@ -163,6 +186,8 @@ int envoi_msg_UDP(){
         printf("SOURCE : Envoi n°%d (%d) [%s]\n", i+1, tailleMessage, message);
     }
     printf("SOURCE : FIN\n");
+
+    //4. Fermeture socket
     err = close(sock);
     if(err < 0){
         perror("SOURCE : Erreur sendto");
@@ -212,6 +237,8 @@ int recevoir_msg_UDP(){
         }
     }
     printf("PUITS : FIN\n");
+
+    // 5. Fermeture socket
     err = close(sock);
     if(err < 0){
         perror("SOURCE : Erreur sendto");
@@ -227,13 +254,13 @@ int recevoir_msg_UDP(){
 
 
 int envoi_msg_TCP(){
-    char *chaine = (char *)malloc(tailleMessage*sizeof(char)); // contient la chaine composé d'un caractere fixe
-    char *message = (char *)malloc((5+tailleMessage)*sizeof(char)); // contient la chaine ci-dessus prefixee du format '---nb'
+    char *chaine = (char *)malloc((tailleMessage-5)*sizeof(char)); // contient la chaine composé d'un caractere fixe
+    char *message = (char *)malloc(tailleMessage*sizeof(char)); // contient la chaine ci-dessus prefixee du format '---nb'
 
     //1. Création socket
     int sock = creer_socket_local();
 
-    // Création de l'adresse distante
+    //2. Création de l'adresse distante
     struct hostent *hp;
     struct sockaddr_in adr_distant;
     memset((char*)&adr_distant, 0, sizeof(adr_distant));
@@ -246,21 +273,22 @@ int envoi_msg_TCP(){
     }
     memcpy((char*)&(adr_distant.sin_addr.s_addr), hp->h_addr, hp->h_length);
    
-    // Connexion à l'adresse distante
+    //3. Connexion à l'adresse distante
     err = connect(sock, (struct sockaddr*)&adr_distant, sizeof(adr_distant));
     if(err == -1){
         printf("SOURCE : Erreur connexion\n");
         exit(1);
     }
 
-    // Envoi des messages au puits
+    //4. Envoi des messages au puits
     int i;
     printf("SOURCE : taille_msg_emis=%d, port=%d, nb_msg=%d, protocol=%s, dest=%s\n", tailleMessage, port, nbMessage, nomProtocole, nomStation);
     for(i=0; i<nbMessage; i++){
-        construire_message(chaine, (char)(i%26)+97, tailleMessage);
+        construire_message(chaine, (char)(i%26)+97, tailleMessage-5);
         strcpy(message, format_message(i+1));
         strcat(message, chaine);
-        err = sendto(sock, message, tailleMessage, 0, (struct sockaddr*)&adr_distant,sizeof(adr_distant));
+        err = write(sock, message, tailleMessage);
+        //err = sendto(sock, message, tailleMessage, 0, (struct sockaddr*)&adr_distant,sizeof(adr_distant));
         if(err == -1){
             perror("SOURCE : Erreur sendto");
             exit(1);
@@ -268,6 +296,8 @@ int envoi_msg_TCP(){
         printf("SOURCE : Envoi n°%d (%d) [%s]\n", i+1, tailleMessage, message);
     }
     printf("SOURCE : FIN\n");
+
+    // 5. Fermeture socket
     err = close(sock);
     if(err < 0){
         perror("SOURCE : Erreur sendto");
@@ -296,13 +326,14 @@ int recevoir_msg_TCP(){
         exit(1); 
     }
 
-    // Connexion
+    //4. Connexion
     err = listen(sock, 5);
     if(err == -1){
         printf("PUITS : Erreur listen\n");
         exit(1);
     }
 
+    //5. Accepte connexion
     struct sockaddr padr_client;
     int plg_adr_client;
     int sock_bis = accept(sock, &padr_client, &plg_adr_client);
@@ -311,20 +342,24 @@ int recevoir_msg_TCP(){
         exit(1);
     }
 
-    //4. Reception des messages
+    //6. Reception des messages
     printf("PUITS : taille_msg_lu=%d, port=%d, nb_msg=%d, protocol=%s\n", tailleMessage, port, nbMessage, nomProtocole);
-    int i;
-    int lg_max=30;
+    int numMessage = 1;
+    int lg_max = tailleMessage;
     int taille_msg_recu;
-    char buffer[tailleMessage];
-    for (i=0 ; i < nbMessage; i ++) {
-        if ((taille_msg_recu = read(sock_bis, buffer, lg_max)) < 0){
+    char buffer[tailleMessage+1];
+    while((taille_msg_recu = read(sock_bis, buffer, lg_max)) > 0) {
+        if (taille_msg_recu < 0){
             printf("PUITS : Echec read\n");
             exit(1) ;
         }
-        printf("PUITS : Reception n°%d (%d) [%s]\n", i+1, tailleMessage, buffer);
+        buffer[taille_msg_recu] = 0X00;
+        printf("PUITS : Reception n°%d (%d) [%s]\n", numMessage, tailleMessage, buffer);
+        numMessage++;
     }
     printf("PUITS : FIN\n");
+
+    //7. Fermeture socket
     err = close(sock);
     if(err < 0){
         perror("SOURCE : Erreur sendto");
