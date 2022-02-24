@@ -24,21 +24,6 @@ données du réseau */
 #define PROTOCOLE 0
 
 
-
-/* 
-
-
-
-WRITE
-
-taille message
-
-
-
-*/
-
-
-
 void construire_message(char *message, char motif, int lg);
 void afficher_message(char *message, int lg);
 char* format_message(int a);
